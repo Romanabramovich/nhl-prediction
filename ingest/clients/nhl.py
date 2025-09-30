@@ -56,7 +56,8 @@ class NHLClient:
                 if attempt == timeout:
                     raise
                 time.sleep(backoff ** attempt)
-            raise RuntimeError("runtime error: unreachable")
+        
+        raise RuntimeError("runtime error: unreachable")
                 
                 
         
