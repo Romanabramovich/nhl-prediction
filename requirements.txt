@@ -1,0 +1,6 @@
+sqlalchemy
+datetime
+requests
+Any
+psycopg2-binary
+python-dotenv
