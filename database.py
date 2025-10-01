@@ -12,7 +12,7 @@ def get_database_engine():
         raise ValueError("value error: DB_URL environment variable not set")
     
     print("Connecting with DB_URL =", os.getenv("DB_URL"))
-    return create_engine(db_url, echo=False)
+    return create_engine(db_url, echo=False, pool_pre_ping=True)
 
 def test_connection():
     # test database connection
