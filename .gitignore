@@ -1,3 +1,5 @@
 .env
 data
 docker-compose.yaml
+*.csv
+*.pyc
