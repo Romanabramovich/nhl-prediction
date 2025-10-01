@@ -102,11 +102,13 @@ def main():
     start_date = dt.date(int(season), 10, 1)
     end_date = dt.date(int(season) + 1, 6, 30)
     
+
+    # upsert teams for the season
+    upsert_teams_in_season(season, engine)
+    
     # upsert league schedule for the season
     upsert_games_in_season(season, engine)
     
-    # upsert teams for the season
-    upsert_teams_in_season(season, engine)
     
     # ingest daily standings
     ingest_daily_data(start_date, end_date, engine)
