@@ -1,5 +1,5 @@
 # features/build_snapshot.py
-from datetime import datetime
+from datetime import datetime, timedelta
 from database import get_database_engine
 import json
 from sqlalchemy import text 
@@ -26,53 +26,60 @@ def compute_rest_days(conn, team_id: int, cutoff: datetime) -> dict:
     return {"rest_days": rest_days, "b2b": 1 if rest_days == 1 else 0}
 
 def compute_rolling_form(conn, team_id: int, cutoff: datetime, window: int = 10) -> dict:
-    rows = conn.execute(text(
+    # get the most recent stats before cutoff
+    recent_stats = conn.execute(text(
         """
         SELECT points, wins, losses, goals_for, goals_against
         FROM team_stats
         WHERE team_id = :t AND date < :cutoff
-        ORDER BY date DESC LIMIT :window
+        ORDER BY date DESC LIMIT 1
         """
-    ), {"t": team_id, "cutoff": cutoff, "window":window}).fetchall()
+    ), {"t": team_id, "cutoff": cutoff}).fetchone()
     
-    if not rows or len(rows) < 2:
+    if not recent_stats:
         return {
             "roll_pts": None,
-            "roll_wins":None,
-            "roll_loss":None,
-            "roll_goals_for":None,
-            "roll_goals_against":None
-            }
+            "roll_wins": None,
+            "roll_loss": None,
+            "roll_goals_for": None,
+            "roll_goals_against": None
+        }
     
-    # For cumulative stats, calculate the difference between most recent and N games ago
-    if len(rows) >= window:
-        # Most recent game (index 0) vs game N games ago (index window-1)
-        recent = rows[0]
-        old = rows[window-1]
-        
-        roll_pts = recent[0] - old[0]
-        roll_wins = recent[1] - old[1]
-        roll_loss = recent[2] - old[2]
-        roll_gf = recent[3] - old[3]
-        roll_ga = recent[4] - old[4]
-    else:
-        # If we don't have enough games, use all available data
-        recent = rows[0]
-        old = rows[-1]
-        
-        roll_pts = recent[0] - old[0]
-        roll_wins = recent[1] - old[1]
-        roll_loss = recent[2] - old[2]
-        roll_gf = recent[3] - old[3]
-        roll_ga = recent[4] - old[4]
+    # get stats from window games ago (approximate by going back window days)
+    window_date = cutoff - timedelta(days=window * 7)  # Approximate: 7 days per game
+    old_stats = conn.execute(text(
+        """
+        SELECT points, wins, losses, goals_for, goals_against
+        FROM team_stats
+        WHERE team_id = :t AND date <= :window_date
+        ORDER BY date DESC LIMIT 1
+        """
+    ), {"t": team_id, "window_date": window_date}).fetchone()
+    
+    if not old_stats:
+        # if no old stats, use current season start (all stats are rolling from season start)
+        return {
+            "roll_pts": recent_stats[0],
+            "roll_wins": recent_stats[1], 
+            "roll_loss": recent_stats[2],
+            "roll_goals_for": recent_stats[3],
+            "roll_goals_against": recent_stats[4]
+        }
+    
+    # Calculate rolling window differences
+    roll_pts = recent_stats[0] - old_stats[0]
+    roll_wins = recent_stats[1] - old_stats[1]
+    roll_loss = recent_stats[2] - old_stats[2]
+    roll_gf = recent_stats[3] - old_stats[3]
+    roll_ga = recent_stats[4] - old_stats[4]
         
     return {
-            "roll_pts": roll_pts,
-            "roll_wins": roll_wins,
-            "roll_loss": roll_loss,
-            "roll_goals_for": roll_gf,
-            "roll_goals_against": roll_ga
-            }
+        "roll_pts": roll_pts,
+        "roll_wins": roll_wins,
+        "roll_loss": roll_loss,
+        "roll_goals_for": roll_gf,
+        "roll_goals_against": roll_ga
+    }
     
 def build_feature_snapshot(season: str, game_id: int, cutoff: datetime, engine = None):
     
