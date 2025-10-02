@@ -1,15 +1,15 @@
 # models/backtest.py
 import pandas as pd
-import numpy as np
+import sys
+import os
 import xgboost as xgb
-from sklearn.base import clone
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import get_database_engine
-from sqlalchemy import text
-import json
+from features.extract_features import extract_features
 
 def load_data():
     # load train and validation data from database
@@ -20,32 +20,6 @@ def load_data():
         val_df = pd.read_sql("SELECT * FROM modeling_val", conn)
     
     return train_df, val_df
-
-def extract_features(df):
-    # extract features from JSON and create feature matrix
-    features = []
-    
-    for _, row in df.iterrows():
-        feature_dict = row['feature_json']
-        
-        feature_row = {
-            'home_roll_pts': feature_dict.get('home_roll_pts'),
-            'away_roll_pts': feature_dict.get('away_roll_pts'),
-            'home_roll_w': feature_dict.get('home_roll_w'),
-            'away_roll_w': feature_dict.get('away_roll_w'),
-            'home_roll_l': feature_dict.get('home_roll_l'),
-            'away_roll_l': feature_dict.get('away_roll_l'),
-            'home_roll_gf': feature_dict.get('home_roll_gf'),
-            'away_roll_gf': feature_dict.get('away_roll_gf'),
-            'home_roll_ga': feature_dict.get('home_roll_ga'),
-            'away_roll_ga': feature_dict.get('away_roll_ga'),
-            'rest_diff': feature_dict.get('rest_diff'),
-            'b2b_home': feature_dict.get('b2b_home'),
-            'b2b_away': feature_dict.get('b2b_away'),
-        }
-        features.append(feature_row)
-    
-    return pd.DataFrame(features)
 
 def train_model(X_train, y_train, X_cal, y_cal):
     # train calibrated XGBoost model
