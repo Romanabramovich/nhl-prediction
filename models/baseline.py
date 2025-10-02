@@ -5,8 +5,13 @@ import json
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
 from sklearn.preprocessing import StandardScaler
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import get_database_engine
 from sqlalchemy import text
+from features.extract_features import extract_features
 
 def load_data():
     # load train and validation data from database
@@ -18,33 +23,7 @@ def load_data():
     
     return train_df, val_df
 
-def extract_features(df):
-    # extract features from JSON and create feature matrix
-    features = []
-    
-    for _, row in df.iterrows():
-        # feature_json is already a dict, not a string
-        feature_dict = row['feature_json']
-        
-        # extract key features, handling nulls
-        feature_row = {
-            'home_roll_pts': feature_dict.get('home_roll_pts'),
-            'away_roll_pts': feature_dict.get('away_roll_pts'),
-            'home_roll_w': feature_dict.get('home_roll_w'),
-            'away_roll_w': feature_dict.get('away_roll_w'),
-            'home_roll_l': feature_dict.get('home_roll_l'),
-            'away_roll_l': feature_dict.get('away_roll_l'),
-            'home_roll_gf': feature_dict.get('home_roll_gf'),
-            'away_roll_gf': feature_dict.get('away_roll_gf'),
-            'home_roll_ga': feature_dict.get('home_roll_ga'),
-            'away_roll_ga': feature_dict.get('away_roll_ga'),
-            'rest_diff': feature_dict.get('rest_diff'),
-            'b2b_home': feature_dict.get('b2b_home'),
-            'b2b_away': feature_dict.get('b2b_away'),
-        }
-        features.append(feature_row)
-    
-    return pd.DataFrame(features)
+# extract_features function now imported from features.extract_features
 
 def train_baseline():
     # train baseline logistic regression model

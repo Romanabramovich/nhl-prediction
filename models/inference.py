@@ -1,9 +1,13 @@
 # models/inference.py
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import pandas as pd
 import xgboost as xgb
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.model_selection import train_test_split
 from database import get_database_engine
+from features.extract_features import extract_features
 
 def load_training_data():
     """Load all training data to retrain the model"""
@@ -17,31 +21,6 @@ def load_training_data():
     all_df = pd.concat([train_df, val_df])
     return all_df
 
-def extract_features(df):
-    """Extract features from JSON"""
-    features = []
-    
-    for _, row in df.iterrows():
-        feature_dict = row['feature_json']
-        
-        feature_row = {
-            'home_roll_pts': feature_dict.get('home_roll_pts'),
-            'away_roll_pts': feature_dict.get('away_roll_pts'),
-            'home_roll_w': feature_dict.get('home_roll_w'),
-            'away_roll_w': feature_dict.get('away_roll_w'),
-            'home_roll_l': feature_dict.get('home_roll_l'),
-            'away_roll_l': feature_dict.get('away_roll_l'),
-            'home_roll_gf': feature_dict.get('home_roll_gf'),
-            'away_roll_gf': feature_dict.get('away_roll_gf'),
-            'home_roll_ga': feature_dict.get('home_roll_ga'),
-            'away_roll_ga': feature_dict.get('away_roll_ga'),
-            'rest_diff': feature_dict.get('rest_diff'),
-            'b2b_home': feature_dict.get('b2b_home'),
-            'b2b_away': feature_dict.get('b2b_away'),
-        }
-        features.append(feature_row)
-    
-    return pd.DataFrame(features)
 
 def train_production_model():
     # train model on all available data for production
