@@ -1,7 +1,5 @@
 # models/calibrated_xgboost.py
 import pandas as pd
-import numpy as np
-import json
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score, brier_score_loss
 from sklearn.calibration import CalibratedClassifierCV
@@ -11,7 +9,6 @@ import os
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from database import get_database_engine
-from sqlalchemy import text
 from features.extract_features import extract_features
 
 def load_data():
@@ -23,8 +20,6 @@ def load_data():
         val_df = pd.read_sql("SELECT * FROM modeling_val", conn)
     
     return train_df, val_df
-
-# extract_features function now imported from features.extract_features
 
 def train_calibrated_xgboost():
     # train calibrated XGBoost model
@@ -42,7 +37,7 @@ def train_calibrated_xgboost():
     X_val = extract_features(val_df)
     y_val = val_df['home_win'].astype(int)
     
-    # handle nulls - simple imputation with 0
+    # handle nulls
     print("handling null values...")
     X_train = X_train.fillna(0)
     X_val = X_val.fillna(0)
@@ -78,14 +73,14 @@ def train_calibrated_xgboost():
         eval_metric='logloss'
     )
     
-    # Use cross-validation for calibration (no cv='prefit')
+    # use cross-validation for calibration
     calibrated_model = CalibratedClassifierCV(
         base_model, 
-        method='sigmoid',  # Platt scaling
-        cv=3  # Use 3-fold CV for calibration
+        method='sigmoid',
+        cv=3 
     )
     
-    # Train and calibrate on combined data
+    # train and calibrate on combined data
     X_combined = pd.concat([X_train_base, X_cal])
     y_combined = pd.concat([y_train_base, y_cal])
     calibrated_model.fit(X_combined, y_combined)
@@ -93,7 +88,7 @@ def train_calibrated_xgboost():
     # make predictions with calibrated model
     y_pred_proba_cal = calibrated_model.predict_proba(X_val)[:, 1]
     
-    # For uncalibrated comparison, train a separate base model
+    # for uncalibrated comparison, train a separate base model
     base_model.fit(X_train_base, y_train_base)
     y_pred_proba_uncal = base_model.predict_proba(X_val)[:, 1]
     

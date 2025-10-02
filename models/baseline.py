@@ -23,8 +23,6 @@ def load_data():
     
     return train_df, val_df
 
-# extract_features function now imported from features.extract_features
-
 def train_baseline():
     # train baseline logistic regression model
     print("loading data...")
@@ -41,7 +39,7 @@ def train_baseline():
     X_val = extract_features(val_df)
     y_val = val_df['home_win'].astype(int)
     
-    # handle nulls - simple imputation with 0
+    # handle nulls
     print("handling null values...")
     X_train = X_train.fillna(0)
     X_val = X_val.fillna(0)

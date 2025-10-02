@@ -5,7 +5,6 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import xgboost as xgb
 from sklearn.metrics import accuracy_score, log_loss, roc_auc_score
-from sklearn.preprocessing import StandardScaler
 from database import get_database_engine
 from features.extract_features import extract_features
 
@@ -37,7 +36,7 @@ def train_xgboost():
     X_val = extract_features(val_df)
     y_val = val_df['home_win'].astype(int)
     
-    # handle nulls - simple imputation with 0
+    # handle nulls
     print("handling null values...")
     X_train = X_train.fillna(0)
     X_val = X_val.fillna(0)
@@ -88,6 +87,9 @@ def train_xgboost():
     
     print(f"\n=== TOP FEATURES (XGBoost) ===")
     print(feature_importance.head(10))
+    
+    print(f"\n=== BOTTOM FEATURES (XGBoost) ===")
+    print(feature_importance.tail(5))
     
     return model, accuracy, logloss, auc
 
