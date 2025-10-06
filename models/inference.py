@@ -41,53 +41,60 @@ def train_production_model():
     # train model on all available data for production
     print("Training production model on all data...")
     
-    # Load and sort all data by time
+    # Load all data 
     all_df = load_training_data().sort_values('game_date')
     
-    # Time-based split: most recent 20% for calibration/eval
-    split_idx = int(len(all_df) * 0.8)
-    train_df = all_df.iloc[:split_idx]
-    cal_df = all_df.iloc[split_idx:]
+    # Extract features from all data
+    X_all = extract_features(all_df).fillna(0)
+    y_all = all_df['home_win'].astype(int)
     
-    # Extract features per split to avoid leakage
-    X_train = extract_features(train_df).fillna(0)
-    y_train = train_df['home_win'].astype(int)
+    print(f"Training on {len(X_all)} games (all available data)")
     
-    X_cal = extract_features(cal_df).fillna(0)
-    y_cal = cal_df['home_win'].astype(int)
-    
-    print(f"Training on {len(X_train)} games; calibrating on {len(X_cal)} recent games")
-    
-    # Load tuned params and train with native xgboost API (early stopping compatible)
+    # Load tuned params if they exist, otherwise use defaults
     best_params = load_best_params()
-    params = best_params or {
-        'n_estimators': 1000,
+    params_source = best_params or {
+        'n_estimators': 100,
         'max_depth': 6,
         'learning_rate': 0.05,
-        'subsample': 0.9,
-        'colsample_bytree': 0.9,
+        'subsample': 1.0,
+        'colsample_bytree': 1.0,
         'min_child_weight': 1,
         'gamma': 0.0,
         'reg_alpha': 0.0,
         'reg_lambda': 1.0,
     }
     
-    # Train model with loaded parameters
+    # Use native XGBoost API (same as xgboost_model.py)
     print(f"Training XGBoost with {'tuned' if best_params else 'default'} parameters...")
-    model = xgb.XGBClassifier(
-        objective='binary:logistic',
-        eval_metric='logloss',
-        random_state=42,
-        **params
+    
+    num_boost_round = int(params_source.get('n_estimators', 100))
+    native_params = {
+        'objective': 'binary:logistic',
+        'max_depth': int(params_source.get('max_depth', 6)),
+        'eta': float(params_source.get('learning_rate', 0.05)),
+        'subsample': float(params_source.get('subsample', 1.0)),
+        'colsample_bytree': float(params_source.get('colsample_bytree', 1.0)),
+        'min_child_weight': float(params_source.get('min_child_weight', 1)),
+        'gamma': float(params_source.get('gamma', 0.0)),
+        'alpha': float(params_source.get('reg_alpha', 0.0)),
+        'lambda': float(params_source.get('reg_lambda', 1.0)),
+        'eval_metric': 'logloss',
+    }
+    
+    # Train on all data (no validation/early stopping for production)
+    dtrain = xgb.DMatrix(X_all, label=y_all)
+    booster = xgb.train(
+        params=native_params,
+        dtrain=dtrain,
+        num_boost_round=num_boost_round,
+        verbose_eval=False,
     )
     
-    model.fit(X_train, y_train)
-       
     # Store feature columns for consistency
-    feature_columns = X_train.columns.tolist()
+    feature_columns = X_all.columns.tolist()
     
     print("Model training complete!")
-    return model, feature_columns
+    return booster, feature_columns
 
 
 def predict_upcoming_games():
@@ -128,8 +135,9 @@ def predict_upcoming_games():
             X_upcoming[col] = 0
     X_upcoming = X_upcoming[feature_columns]
     
-    # Make predictions
-    predictions = model.predict_proba(X_upcoming)[:, 1]
+    # Make predictions using booster
+    dupcoming = xgb.DMatrix(X_upcoming)
+    predictions = model.predict(dupcoming)
     
     # Create results
     results = []
