@@ -374,7 +374,10 @@ def build_feature_snapshot(season: str, game_id: int, cutoff: datetime, engine =
             """
           INSERT INTO feature_snapshots (game_id, as_of_ts_utc, feature_json)
           VALUES (:gid, :ts, :json)
-          ON CONFLICT (game_id, as_of_ts_utc) DO NOTHING
+          ON CONFLICT (game_id, as_of_ts_utc) 
+          DO UPDATE SET 
+            feature_json = EXCLUDED.feature_json,
+            created_at = CURRENT_TIMESTAMP
         """), {"gid": game_id, "ts": cutoff, "json": json.dumps(convert_decimals_to_floats(feature))})
         
         
