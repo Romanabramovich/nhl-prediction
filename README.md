@@ -1,7 +1,5 @@
 # NHL Win Prediction Model
 
-A production-ready machine learning system that predicts NHL game outcomes using XGBoost with performance tracking.
-
 ## 🎯 Overview
 
 This project implements an end-to-end ML pipeline that:
